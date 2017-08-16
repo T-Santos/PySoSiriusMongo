@@ -12,6 +12,7 @@ import logging
 # installed packages
 import pymongo
 from pysosirius.sirius_playing import SiriusCurrentlyPlaying
+from pysosirius.common.exceptions import AttributeNotFoundError 
 
 # global, module level logger
 log = logging.getLogger(__name__)
@@ -153,11 +154,12 @@ class ETL(object):
 
 			# theres always a new doc for newly switched to song
 			if new_doc:
-				log.info('Song: %s',
+				log.info('\nArtist: %s \nSong: %s',
+					self.pss_channel.currently_playing.artist_name,
 					self.pss_channel.currently_playing.song_name)
 				self.__load(new_doc,doc_updates)
 		else:
-			log.error('Extracting Data for Channel: %s \n %s \n %s \n',
+			log.info('Extracting Data for Channel: %s \n %s \n %s \n',
 				self.pss_channel.name,
 				self.pss_channel.url,
 				self.pss_channel.currently_playing._get_url())
@@ -166,8 +168,13 @@ class ETL(object):
 		"""
 		Hit sirius server for currently playing
 		"""
-		
-		self.pss_channel.get_currently_playing()
+		try:
+			# will raise AttributeNotFoundError
+			self.pss_channel.get_currently_playing()
+			# return status of extraction
+			self.pss_channel.currently_playing.status
+		except AttributeNotFoundError:
+			return False
 
 		# return status of extraction
 		return self.pss_channel.currently_playing.status

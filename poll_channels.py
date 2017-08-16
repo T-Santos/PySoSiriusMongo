@@ -31,6 +31,9 @@ import pymongo
 from pysosirius.pysosirius import PySoSirius
 from etl.extract_transform_load import ETL
 
+# global, module level logger
+log = logging.getLogger(__name__)
+
 def extraction(etl_channel):
 	"""
 	Launch a thread to start compiling played songs per channel
@@ -45,7 +48,13 @@ def extraction(etl_channel):
 	    None
 	"""
 	while True:
-		etl_channel.extract_transform_load()
+		try:
+			etl_channel.extract_transform_load()
+		except:
+			channel = etl_channel.pss_channel.channel
+			url = etl_channel.pss_channel.currently_playing._get_url()
+			error_string = '\n {0} {1} {0} \n{2}'.format('*'*25,channel,url)
+			log.exception(error_string)
 		time.sleep(60)
 
 def get_pss_channels(channels=None):
@@ -137,7 +146,7 @@ def main(**kwargs):
 
 	# loop infinitum - used to keep daemon threads running
 	while True:
-		logger.info('Minute: %d',(1440 - datetime.datetime.now().minute))
+		log.info('Minute: %d',(1440 - datetime.datetime.now().minute))
 		time.sleep(60)
 		pass
 
@@ -153,6 +162,10 @@ if __name__ == '__main__':
 						type=str,
 						choices=['DEBUG','INFO','WARNING','ERROR','CRITICAL'],
 						help='Set the logging level')
+
+	parser.add_argument('-log', '--log_file',
+						type=str,
+						help='Set the error file for output')
 
 	# Compile args
 	parser.add_argument('-C', '--channels',
@@ -181,6 +194,7 @@ if __name__ == '__main__':
 
  	# Set up global logger
  	if args.log_level:
+ 		logging.basicConfig(filename=args.log_file)
  		logger = logging.getLogger()
 		handler = logging.StreamHandler()
 		formatter = logging.Formatter(
@@ -191,6 +205,7 @@ if __name__ == '__main__':
 
  	# remove any args not needed
  	args_dict.pop('log_level')
+ 	args_dict.pop('log_file')
 
  	# pass remaining args to main so it can do what it needs
 	main(**args_dict)
