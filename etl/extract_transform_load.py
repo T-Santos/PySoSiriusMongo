@@ -51,7 +51,7 @@ class ETL(object):
 		self.database_write = database_write
 
 		# computed values
-		self.collection_name = "channel_" + str(self.pss_channel.channel)
+		self.collection_name = 'all_songs'
 
 		# internal data
 		self.__last_played = None
