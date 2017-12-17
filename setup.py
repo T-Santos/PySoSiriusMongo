@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
 	name='pysosiriusmongo',
-	version='0.0.7',
+	version='0.1.1',
 	description='PySoSirius SiriusXM Song Storage',
 	url='https://github.com/T-Santos/PySoSiriusMongo',
 	author='Tyler Santos',

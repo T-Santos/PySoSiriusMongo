@@ -65,9 +65,21 @@ class ETL(object):
 		"""str: datetime of last played song"""
 
 		if self.__last_played:
-			return self.__last_played['datetime'][-1]
+			# get the last datetime logged for the channel of interest
+			_,channel_dict = self.__get_channel_dict(self.__last_played,self.pss_channel.channel)
+			if channel_dict:
+				return channel_dict['datetimes'][-1]
 
 		return None
+
+	def __get_channel_dict(self,song_doc,channel_number):
+		""" return the offset and the dict itself else (none,none) """
+
+		# get the channel dictionary of interest
+		try:
+			return [(i,channel_dict) for i,channel_dict in enumerate(song_doc['channels']) if channel_dict['number'] == channel_number][0]
+		except:
+			return None,None
 
 	def __update_last_played(self,last_played = {}):
 		"""
@@ -101,11 +113,9 @@ class ETL(object):
 
 			collection.create_index([('artist.name',pymongo.TEXT),
 									 ('song.name',pymongo.TEXT),
-									 ('channels.id',pymongo.TEXT),
 									 ('channels.number',pymongo.TEXT),
-									 ('channels.name',pymongo.TEXT)])
-
-			collection.create_index([('datetime', pymongo.DESCENDING)])
+									 ('channels.name',pymongo.TEXT),
+									 ('channels.datetimes', pymongo.DESCENDING)])
 
 	def get_existing(self):
 		"""
@@ -213,22 +223,32 @@ class ETL(object):
 			new_transformed_data['album'] = {'name': SiriusCurrentlyPlaying.get_attribute(ROOT_SONG_KEYS+ATTRIBUTE_KEYS['album'],extraction_data)}
 			new_transformed_data['song'] = {'name':  SiriusCurrentlyPlaying.get_attribute(ROOT_SONG_KEYS+ATTRIBUTE_KEYS['song'],extraction_data)}
 			new_transformed_data['artist'] = {'name':  SiriusCurrentlyPlaying.get_attribute(ROOT_SONG_KEYS+ATTRIBUTE_KEYS['artist'],extraction_data)}
-
-			# update last played if not already in list
-			new_datetime = SiriusCurrentlyPlaying.get_attribute(SONG_START_TIME,extraction_data)
-			if new_datetime not in new_transformed_data.get('datetime',[])[::-1]:
-				new_transformed_data['datetime'] = new_transformed_data.get('datetime',[]) + [new_datetime]
 			
-			# update channel data if not already in list
+			# update list of channels
 			channel_data = {'id': SiriusCurrentlyPlaying.get_attribute(['channelMetadataResponse','metaData','channelId'],extraction_data),
 							'number': SiriusCurrentlyPlaying.get_attribute(['channelMetadataResponse','metaData','channelNumber'],extraction_data),
 							'name': SiriusCurrentlyPlaying.get_attribute(['channelMetadataResponse','metaData','channelName'],extraction_data)}
 
-			if channel_data not in new_transformed_data.get('channels',[]):
-				new_transformed_data['channels'] = new_transformed_data.get('channels',[]) + [channel_data]
+			# get the new played datetime
+			new_datetime = SiriusCurrentlyPlaying.get_attribute(SONG_START_TIME,extraction_data)
 
-			# non indexed fields
-			new_transformed_data['play_count'] = new_transformed_data.get('play_count',0)+1
+			# get the channel dictionary
+			channel_dict_offset,existing_channel_dict = self.__get_channel_dict(new_transformed_data,channel_data['number'])
+
+			if existing_channel_dict:
+				# add the new date time to the end
+				existing_channel_dict['datetimes'] = existing_channel_dict['datetimes'] + [new_datetime]
+				# update the existing offset with the new data
+				new_transformed_data['channels'][channel_dict_offset] = existing_channel_dict
+			else:
+				# add the first occurence
+				channel_data['datetimes'] = [new_datetime]
+
+				#print(channel_data['datetimes'])
+				#print("*"*10)
+				#print(new_transformed_data.get('channels',[]))
+				# add the new data blindly, its okay since its new
+				new_transformed_data['channels'] = new_transformed_data.get('channels',[]) + [channel_data]	
 
 			image_list = []
 			for artwork in SiriusCurrentlyPlaying.get_attribute(['channelMetadataResponse','metaData','currentEvent','song','creativeArts'],extraction_data):
@@ -290,6 +310,11 @@ class ETL(object):
 		# make sure we log the last played on the channel
 		# regardless of writing to the db or not
 		self.__update_last_played(new_doc)
+
+		#from pprint import pprint
+
+		#pprint(new_doc)
+		#pprint(doc_updates)
 
 		if self.database and self.database_write:
 
