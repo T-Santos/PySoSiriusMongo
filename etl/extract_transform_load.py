@@ -116,7 +116,6 @@ class ETL(object):
 									 ('channels.number',pymongo.TEXT),
 									 ('channels.name',pymongo.TEXT),
 									 ('channels.datetimes', pymongo.DESCENDING)])
-
 	def get_existing(self):
 		"""
 		Get an existing document int he DB
