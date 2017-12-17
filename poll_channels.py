@@ -17,7 +17,7 @@ Poll channels with logging
 Poll channels no db interaction - useful for testing
 for just to getting currently playing data with no need or use
 for more than last song played and current song playing
-	python poll_channels -C 56 -ll DEBUG --db_write_disabled
+	python poll_channels.py -C 56 -ll DEBUG --db_write_disabled
 
 """
 import datetime
@@ -140,6 +140,11 @@ def main(**kwargs):
 
 	# get channels of interest
 	pss_channels = get_pss_channels(kwargs['channels'])
+
+	# Temporarily delete so we start from scratch
+	#database['last_played'].delete_many({})
+	#database['all_songs'].delete_many({})
+	#database['all_songs'].drop_indexes()
 
 	# start compile threads
 	start_channel_compile(pss_channels,database,not(kwargs['db_write_disabled']))
