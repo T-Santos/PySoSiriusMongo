@@ -8,6 +8,7 @@ SiriusXm into PySoSirius Historical DB.
 # System packages
 from copy import deepcopy
 import logging
+from datetime import datetime
 
 # installed packages
 import pymongo
@@ -16,6 +17,9 @@ from pysosirius.common.exceptions import AttributeNotFoundError
 
 # global, module level logger
 log = logging.getLogger(__name__)
+
+def convert_to_dt(utc_dt_str):
+	return datetime.strptime(utc_dt_str,'%Y-%m-%dT%H:%M:%SZ')
 
 class ETL(object):
 	"""
@@ -229,7 +233,8 @@ class ETL(object):
 							'name': SiriusCurrentlyPlaying.get_attribute(['channelMetadataResponse','metaData','channelName'],extraction_data)}
 
 			# get the new played datetime
-			new_datetime = SiriusCurrentlyPlaying.get_attribute(SONG_START_TIME,extraction_data)
+			new_datetime = convert_to_dt(SiriusCurrentlyPlaying
+				.get_attribute(SONG_START_TIME,extraction_data))
 
 			# get the channel dictionary
 			channel_dict_offset,existing_channel_dict = self.__get_channel_dict(new_transformed_data,channel_data['number'])
@@ -266,7 +271,7 @@ class ETL(object):
 			return new_transformed_data
 
 		# begin the transform
-		if self.last_played_start != self.pss_channel.currently_playing.start:
+		if self.last_played_start != convert_to_dt(self.pss_channel.currently_playing.start):
 			
 			existing_doc = self.get_existing()
 
